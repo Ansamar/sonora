@@ -1,0 +1,13 @@
+{
+  "name": "sonora",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^0.10.0",
+    "@vercel/blob": "^2.8.0"
+  }
+}
