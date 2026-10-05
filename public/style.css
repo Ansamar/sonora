@@ -1,0 +1,30 @@
+:root { --bg:#0f1117; --card:#181b24; --line:#2a2e3d; --txt:#e8eaf2; --muted:#8b90a5; --accent:#6c8cff; --danger:#ff6c6c; }
+* { box-sizing: border-box; }
+body { margin:0; font-family:system-ui,sans-serif; background:var(--bg); color:var(--txt); }
+.container { max-width:720px; margin:0 auto; padding:24px 16px 64px; }
+header p { color:var(--muted); margin-top:0; }
+form, #result, #history-section { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:20px; margin-top:20px; }
+textarea, select { width:100%; background:var(--bg); color:var(--txt); border:1px solid var(--line); border-radius:8px; padding:10px 12px; font:inherit; }
+textarea { resize:vertical; }
+.meta { text-align:right; color:var(--muted); font-size:.85rem; }
+.options { display:grid; grid-template-columns:1.6fr .7fr; gap:14px; margin:12px 0; }
+.option-group label { display:block; font-size:.8rem; color:var(--muted); margin-bottom:6px; }
+.voice-row { display:flex; gap:8px; }
+.actions { display:flex; gap:10px; margin-top:8px; }
+button, .btn { cursor:pointer; border:none; border-radius:8px; padding:10px 16px; font:inherit; color:#fff; background:var(--accent); text-decoration:none; display:inline-flex; align-items:center; gap:6px; }
+.btn.ghost { background:transparent; border:1px solid var(--line); color:var(--txt); }
+.btn.danger { background:transparent; color:var(--danger); }
+button:disabled { opacity:.5; cursor:wait; }
+h2 { margin-top:0; }
+audio { width:100%; }
+.result-meta { display:flex; gap:12px; align-items:center; color:var(--muted); font-size:.9rem; margin-top:10px; }
+.history { list-style:none; padding:0; margin:0; display:grid; gap:12px; }
+.history-item { border:1px solid var(--line); border-radius:10px; padding:12px 14px; }
+.history-head { display:flex; justify-content:space-between; color:var(--muted); font-size:.85rem; }
+.snippet { margin:6px 0 10px; }
+.history-actions { display:flex; gap:10px; align-items:center; }
+.history-actions audio { flex:1; }
+.size { color:var(--muted); font-size:.8rem; }
+.empty, #status { color:var(--muted); }
+#status.error { color:var(--danger); }
+@media (max-width:560px) { .options { grid-template-columns:1fr; } }

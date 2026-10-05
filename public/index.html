@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sonora – Dashboard TTS</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="container">
+    <header>
+      <h1>🎙️ Sonora</h1>
+      <p>Text-to-Speech in italiano con l'API di Narakeet</p>
+    </header>
+
+    <form id="tts-form">
+      <label for="text">Testo da convertire</label>
+      <textarea id="text" rows="8" required
+        placeholder="Scrivi qui il testo da trasformare in audio..."></textarea>
+      <div class="meta"><span id="char-count">0</span> caratteri</div>
+
+      <div class="options">
+        <div class="option-group">
+          <label for="voice">Voce</label>
+          <div class="voice-row">
+            <select id="voice"></select>
+            <button type="button" id="preview-btn">▶ Anteprima</button>
+          </div>
+        </div>
+        <div class="option-group">
+          <label for="format">Formato</label>
+          <select id="format">
+            <option value="mp3" selected>MP3</option>
+            <option value="m4a">M4A</option>
+            <option value="wav">WAV</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button type="submit" id="generate-btn">🔊 Genera audio</button>
+        <button type="reset">Pulisci</button>
+      </div>
+    </form>
+
+    <section id="result" hidden>
+      <h2>Ultima generazione</h2>
+      <audio id="audio-player" controls></audio>
+      <div class="result-meta">
+        <a id="download-btn" class="btn ghost" href="#">⬇️ Scarica</a>
+        <span id="result-info"></span>
+      </div>
+    </section>
+
+    <section id="history-section">
+      <h2>Cronologia</h2>
+      <ul id="history" class="history"></ul>
+    </section>
+
+    <p id="status" role="status"></p>
+  </main>
+  <script src="voices.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
