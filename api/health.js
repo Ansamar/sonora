@@ -9,4 +9,4 @@ module.exports = async (req, res) => {
       BLOB_READ_WRITE_TOKEN: Boolean(process.env.BLOB_READ_WRITE_TOKEN),
     },
   });
-};
+}
