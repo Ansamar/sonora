@@ -8,6 +8,8 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) =>
 const voiceSelect = $('#voice');
 const generateBtn = $('#generate-btn');
 const previewBtn = $('#preview-btn');
+const previewPlayer = $('#preview-player');
+const previewWrap = $('#preview-player-wrap');
 
 /* --- Popola il menu voci (e gestisce il caso "nessuna voce") --- */
 function fillVoices() {
@@ -27,11 +29,20 @@ function fillVoices() {
  $('#text').addEventListener('input', (e) => { $('#char-count').textContent = e.target.value.length; });
  $('#tts-form').addEventListener('reset', () => { $('#char-count').textContent = '0'; });
 
-/* --- Anteprima voce (una chiamata per voce, poi cache in memoria) --- */
+/* --- Anteprima voce: lettore visibile in pagina --- */
 previewBtn.addEventListener('click', async (e) => {
   const btn = e.currentTarget, voice = voiceSelect.value;
   if (!voice) return;
-  if (previewCache.has(voice)) return new Audio(previewCache.get(voice)).play();
+
+  const playUrl = (url) => {
+    previewPlayer.src = url;
+    previewWrap.hidden = false;
+    previewPlayer.play().catch(() => {
+      setStatus("▶ Premi play sul lettore qui sotto per ascoltare l'anteprima.");
+    });
+  };
+
+  if (previewCache.has(voice)) return playUrl(previewCache.get(voice));
 
   btn.disabled = true; btn.textContent = '⏳…';
   try {
@@ -42,7 +53,7 @@ previewBtn.addEventListener('click', async (e) => {
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Errore anteprima');
     const url = URL.createObjectURL(await res.blob());
     previewCache.set(voice, url);
-    new Audio(url).play();
+    playUrl(url);
   } catch (err) { setStatus(`❌ ${err.message}`, true); }
   finally { btn.disabled = false; btn.textContent = '▶ Anteprima'; }
 });
