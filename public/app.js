@@ -10,6 +10,45 @@ const generateBtn = $('#generate-btn');
 const previewBtn = $('#preview-btn');
 const previewPlayer = $('#preview-player');
 const previewWrap = $('#preview-player-wrap');
+const categoryFilter = $('#category-filter');
+
+// Categorie mai viste: si riempie solo con il caricamento completo (senza filtro)
+const categorieNote = new Set();
+
+/* ─── Miglioria 2: velocità e tono ─── */
+const rateInput = $('#rate'), pitchInput = $('#pitch');
+rateInput.addEventListener('input', () => {
+  $('#rate-val').textContent = Number(rateInput.value).toFixed(2).replace(/\.?0+$/, '') + '×';
+});
+pitchInput.addEventListener('input', () => {
+  const v = Number(pitchInput.value);
+  $('#pitch-val').textContent = (v > 0 ? '+' : '') + v;
+});
+
+/* ─── Miglioria 7: pulsanti velocità di riproduzione ─── */
+const VELOCITA = [1, 1.25, 1.5, 2];
+function creaSpeedRow(row) {
+  const target = document.querySelector(`#${row.dataset.for}`);
+  row.innerHTML = '';
+  VELOCITA.forEach((v) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'speed-btn';
+    b.textContent = v + '×';
+    b.addEventListener('click', () => {
+      target.playbackRate = v;
+      row.querySelectorAll('.speed-btn').forEach((x) => x.classList.remove('active'));
+      b.classList.add('active');
+    });
+    row.appendChild(b);
+  });
+  // Reset a 1× quando cambia la sorgente audio
+  target.addEventListener('loadedmetadata', () => {
+    target.playbackRate = 1;
+    row.querySelectorAll('.speed-btn').forEach((x) => x.classList.remove('active'));
+  });
+}
+document.querySelectorAll('.speed-row').forEach(creaSpeedRow);
 
 /* --- Popola il menu voci (e gestisce il caso "nessuna voce") --- */
 function fillVoices() {
@@ -48,7 +87,7 @@ previewBtn.addEventListener('click', async (e) => {
   try {
     const res = await fetch('/api/preview', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ voice, text: PREVIEW_TEXT }),
+      body: JSON.stringify({ voice, text: PREVIEW_TEXT, rate: rateInput.value, pitch: pitchInput.value }),
     });
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Errore anteprima');
     const url = URL.createObjectURL(await res.blob());
@@ -75,6 +114,9 @@ previewBtn.addEventListener('click', async (e) => {
         voice: voiceSelect.value,
         format: $('#format').value,
         filename: $('#filename').value,
+        category: $('#category').value,
+        rate: rateInput.value,
+        pitch: pitchInput.value,
       }),
     });
     const data = await res.json();
@@ -82,51 +124,38 @@ previewBtn.addEventListener('click', async (e) => {
 
     const nomeCompleto = `${data.filename}.${data.format}`;
     $('#audio-player').src = data.url;
-    $('#download-btn').href = data.url;
-    $('#download-btn').dataset.filename = nomeCompleto;
+    $('#download-btn').href = `/api/download?id=${data.id}`;
     $('#result-info').textContent =
-      `${nomeCompleto} · ${data.voice} · ${(data.sizeBytes / 1024).toFixed(0)} KB`;
+      `📁 ${data.category} · ${nomeCompleto} · ${(data.sizeBytes / 1024).toFixed(0)} KB`;
     $('#result').hidden = false;
     setStatus('✅ Audio generato e salvato in cronologia.');
-    loadHistory();
+    loadHistory(categoryFilter.value);
   } catch (err) { setStatus(`❌ ${err.message}`, true); }
   finally { generateBtn.disabled = false; generateBtn.textContent = '🔊 Genera audio'; }
 });
 
-/* --- Download con nome esatto (l'attributo download funziona solo same-origin:
-       scarichiamo il file via fetch e usiamo un URL locale) --- */
-document.addEventListener('click', async (e) => {
-  const a = e.target.closest('a[data-filename]');
-  if (!a || !a.dataset.filename) return;
-  e.preventDefault();
-  try {
-    const res = await fetch(a.href);
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const tmp = document.createElement('a');
-    tmp.href = url;
-    tmp.download = a.dataset.filename;
-    document.body.appendChild(tmp);
-    tmp.click();
-    tmp.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
-  } catch {
-    window.open(a.href, '_blank'); // fallback: download con nome del percorso Blob
-  }
-});
-
 /* --- Cronologia --- */
-// Recupera il nome dal percorso Blob: /audio/<timestamp>-<nome>.<ext>
-function nomeDaUrl(url, formato) {
-  try {
-    const base = decodeURIComponent(new URL(url).pathname.split('/').pop() || '');
-    return base.replace(/^\d+-/, '').replace(/\.[a-z0-9]+$/i, '') + '.' + formato;
-  } catch { return ''; }
+function aggiornaFiltroCategorie() {
+  const selezione = categoryFilter.value;
+  categoryFilter.innerHTML = '';
+  categoryFilter.add(new Option('Tutte le cartelle', ''));
+  [...categorieNote].sort().forEach((c) => categoryFilter.add(new Option('📁 ' + c, c)));
+  categoryFilter.value = selezione;
+  if (categoryFilter.selectedIndex === -1) categoryFilter.value = '';
 }
 
-async function loadHistory() {
+async function loadHistory(categoria = '') {
   try {
-    const rows = await (await fetch('/api/history')).json();
+    const q = categoria ? `?category=${encodeURIComponent(categoria)}` : '';
+    const rows = await (await fetch('/api/history' + q)).json();
+
+    // L'elenco delle categorie si aggiorna solo quando carichiamo TUTTE le righe
+    if (!categoria) {
+      categorieNote.clear();
+      rows.forEach((r) => categorieNote.add(r.category || 'generale'));
+      aggiornaFiltroCategorie();
+    }
+
     const ul = $('#history');
     ul.innerHTML = rows.length ? '' : '<li class="empty">Nessuna generazione ancora.</li>';
 
@@ -135,13 +164,13 @@ async function loadHistory() {
       li.className = 'history-item';
       li.innerHTML = `
         <div class="history-head">
-          <span>🔊 ${esc(r.voice)}</span>
+          <span>📁 ${esc(r.category || 'generale')} · 🔊 ${esc(r.voice)}</span>
           <span>${new Date(r.created_at).toLocaleString('it-IT')}</span>
         </div>
         <p class="snippet">“${esc(r.text.length > 90 ? r.text.slice(0, 90) + '…' : r.text)}”</p>
         <div class="history-actions">
           <audio controls preload="none" src="${esc(r.url)}"></audio>
-          <a href="${esc(r.url)}?download=1" class="btn ghost" data-filename="${esc(nomeDaUrl(r.url, r.format))}" title="Scarica">⬇️</a>
+          <a href="/api/download?id=${r.id}" class="btn ghost" title="Scarica">⬇️</a>
           <span class="size">${r.format.toUpperCase()} · ${(r.size_bytes / 1024).toFixed(0)} KB</span>
           <button class="btn danger" data-id="${r.id}" title="Elimina">🗑️</button>
         </div>`;
@@ -154,8 +183,10 @@ async function loadHistory() {
 async function deleteGeneration(id) {
   if (!confirm('Eliminare questa generazione?')) return;
   await fetch(`/api/history?id=${id}`, { method: 'DELETE' });
-  loadHistory();
+  loadHistory(categoryFilter.value);
 }
+
+categoryFilter.addEventListener('change', () => loadHistory(categoryFilter.value));
 
 function setStatus(msg, isError = false) {
   const el = $('#status');
@@ -163,5 +194,8 @@ function setStatus(msg, isError = false) {
   el.classList.toggle('error', isError);
 }
 
-fillVoices();
-loadHistory();
+// L'app si avvia solo dopo il login (auth-ui.js invia l'evento)
+document.addEventListener('sonora:auth', () => {
+  fillVoices();
+  loadHistory();
+});

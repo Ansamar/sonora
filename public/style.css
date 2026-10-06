@@ -2,14 +2,30 @@
 * { box-sizing: border-box; }
 body { margin:0; font-family:system-ui,sans-serif; background:var(--bg); color:var(--txt); }
 .container { max-width:720px; margin:0 auto; padding:24px 16px 64px; }
-header p { color:var(--muted); margin-top:0; }
+.subtitle { color:var(--muted); margin-top:0; }
+
+/* ─── Schermata di login ─── */
+.login-screen { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:16px; }
+.login-card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:32px 28px; max-width:360px; width:100%; text-align:center; }
+.login-card h1 { margin:0 0 4px; }
+.login-card p { color:var(--muted); margin:0 0 20px; }
+.login-card input { width:100%; background:var(--bg); color:var(--txt); border:1px solid var(--line); border-radius:8px; padding:11px 12px; font:inherit; margin-bottom:12px; text-align:center; }
+.login-card button { width:100%; }
+#login-status { min-height:1.2em; font-size:.9rem; margin:10px 0 0; }
+#login-status.error { color:var(--danger); }
+
+/* ─── Header app ─── */
+.app-header { display:flex; justify-content:space-between; align-items:center; }
+
+/* ─── Form ─── */
 form, #result, #history-section { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:20px; margin-top:20px; }
-textarea, select, input[type="text"] { width:100%; background:var(--bg); color:var(--txt); border:1px solid var(--line); border-radius:8px; padding:10px 12px; font:inherit; }
+textarea, select, input[type="text"], input[type="password"] { width:100%; background:var(--bg); color:var(--txt); border:1px solid var(--line); border-radius:8px; padding:10px 12px; font:inherit; }
 textarea { resize:vertical; }
-input[type="text"] { margin-top:4px; }
+label { display:block; font-size:.8rem; color:var(--muted); margin-bottom:6px; margin-top:10px; }
+.dest-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
 .meta { text-align:right; color:var(--muted); font-size:.85rem; }
 .options { display:grid; grid-template-columns:1.6fr .7fr; gap:14px; margin:12px 0; }
-.option-group label { display:block; font-size:.8rem; color:var(--muted); margin-bottom:6px; }
+.option-group label { margin-top:0; }
 .voice-row { display:flex; gap:8px; }
 .actions { display:flex; gap:10px; margin-top:8px; }
 button, .btn { cursor:pointer; border:none; border-radius:8px; padding:10px 16px; font:inherit; color:#fff; background:var(--accent); text-decoration:none; display:inline-flex; align-items:center; gap:6px; }
@@ -18,14 +34,28 @@ button, .btn { cursor:pointer; border:none; border-radius:8px; padding:10px 16px
 button:disabled { opacity:.5; cursor:wait; }
 h2 { margin-top:0; }
 audio { width:100%; }
-.result-meta { display:flex; gap:12px; align-items:center; color:var(--muted); font-size:.9rem; margin-top:10px; }
+
+/* ─── Miglioria 2: cursori velocità/tono ─── */
+.sliders { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:14px 0 4px; }
+.slider-group label { margin-top:0; }
+input[type="range"] { width:100%; accent-color:var(--accent); }
+
+/* ─── Miglioria 7: pulsanti velocità riproduzione ─── */
+.speed-row { display:flex; gap:6px; margin-top:6px; }
+.speed-btn { padding:3px 10px; font-size:.78rem; border-radius:6px; background:transparent; border:1px solid var(--line); color:var(--muted); }
+.speed-btn.active { border-color:var(--accent); color:var(--accent); }
+
+.result-meta { display:flex; gap:12px; align-items:center; color:var(--muted); font-size:.9rem; margin-top:10px; flex-wrap:wrap; }
+.history-header { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px; }
+.history-header h2 { margin:0; }
+.history-header select { max-width:220px; }
 .history { list-style:none; padding:0; margin:0; display:grid; gap:12px; }
 .history-item { border:1px solid var(--line); border-radius:10px; padding:12px 14px; }
-.history-head { display:flex; justify-content:space-between; color:var(--muted); font-size:.85rem; }
+.history-head { display:flex; justify-content:space-between; color:var(--muted); font-size:.85rem; gap:8px; flex-wrap:wrap; }
 .snippet { margin:6px 0 10px; }
 .history-actions { display:flex; gap:10px; align-items:center; }
 .history-actions audio { flex:1; }
 .size { color:var(--muted); font-size:.8rem; }
 .empty, #status { color:var(--muted); }
 #status.error { color:var(--danger); }
-@media (max-width:560px) { .options { grid-template-columns:1fr; } }
+@media (max-width:560px) { .options, .dest-grid, .sliders { grid-template-columns:1fr; } }

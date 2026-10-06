@@ -1,15 +1,29 @@
 const { del } = require('@vercel/blob');
 const { neon } = require('@neondatabase/serverless');
+const { richiediAuth } = require('./_lib/auth');
 
 const sql = neon(process.env.DATABASE_URL);
 
 module.exports = async (req, res) => {
+  if (!richiediAuth(req, res)) return;
   try {
-    // GET: ultime 25 generazioni
+    // GET: ultime 25 generazioni, con filtro opzionale ?category=nome
     if (req.method === 'GET') {
+      const categoria = new URL(req.url, 'http://x').searchParams.get('category');
+
+      if (categoria) {
+        const rows = await sql`
+          select id, text, voice, format, size_bytes, url, category, created_at
+          from generations
+          where category = ${categoria}
+          order by created_at desc limit 25`;
+        return res.json(rows);
+      }
+
       const rows = await sql`
-        select id, text, voice, format, size_bytes, url, created_at
-        from generations order by created_at desc limit 25`;
+        select id, text, voice, format, size_bytes, url, category, created_at
+        from generations
+        order by created_at desc limit 25`;
       return res.json(rows);
     }
 
@@ -28,6 +42,6 @@ module.exports = async (req, res) => {
 
     res.status(405).end();
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(err.status || 500).json({ error: err.message });
   }
 };

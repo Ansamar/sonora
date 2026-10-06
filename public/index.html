@@ -7,11 +7,23 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <main class="container">
-    <header>
+  <!-- Schermata di login (visibile finché non si è autenticati) -->
+  <div id="login-screen" class="login-screen" hidden>
+    <form id="login-form" class="login-card">
       <h1>🎙️ Sonora</h1>
-      <p>Text-to-Speech in italiano con Google Cloud Text-to-Speech</p>
+      <p>Area riservata</p>
+      <input type="password" id="login-password" placeholder="Password" required autocomplete="current-password" />
+      <button type="submit" id="login-btn">Entra</button>
+      <p id="login-status" role="status"></p>
+    </form>
+  </div>
+
+  <main class="container" id="app" hidden>
+    <header class="app-header">
+      <h1>🎙️ Sonora</h1>
+      <button type="button" id="logout-btn" class="btn ghost" title="Esci">Esci</button>
     </header>
+    <p class="subtitle">Text-to-Speech in italiano con Google Cloud Text-to-Speech</p>
 
     <form id="tts-form">
       <label for="text">Testo da convertire</label>
@@ -19,9 +31,18 @@
         placeholder="Scrivi qui il testo da trasformare in audio..."></textarea>
       <div class="meta"><span id="char-count">0</span> caratteri</div>
 
-      <label for="filename">Nome del file (opzionale)</label>
-      <input type="text" id="filename" maxlength="80"
-        placeholder="es. miei-promemoria — vuoto = nome automatico" />
+      <div class="dest-grid">
+        <div>
+          <label for="filename">Nome del file (opzionale)</label>
+          <input type="text" id="filename" maxlength="80"
+            placeholder="es. miei-promemoria — vuoto = nome automatico" />
+        </div>
+        <div>
+          <label for="category">Cartella (opzionale)</label>
+          <input type="text" id="category" maxlength="40"
+            placeholder="es. poesie, lezioni — vuoto = generale" />
+        </div>
+      </div>
 
       <div class="options">
         <div class="option-group">
@@ -40,9 +61,21 @@
         </div>
       </div>
 
+      <div class="sliders">
+        <div class="slider-group">
+          <label for="rate">Velocità: <span id="rate-val">1.0×</span></label>
+          <input type="range" id="rate" min="0.25" max="4" step="0.05" value="1" />
+        </div>
+        <div class="slider-group">
+          <label for="pitch">Tono: <span id="pitch-val">0</span></label>
+          <input type="range" id="pitch" min="-10" max="10" step="0.5" value="0" />
+        </div>
+      </div>
+
       <!-- Lettore anteprima: appare dopo il primo click su ▶ Anteprima -->
       <div id="preview-player-wrap" hidden>
         <audio id="preview-player" controls></audio>
+        <div class="speed-row" data-for="preview-player"></div>
       </div>
 
       <div class="actions">
@@ -54,6 +87,7 @@
     <section id="result" hidden>
       <h2>Ultima generazione</h2>
       <audio id="audio-player" controls></audio>
+      <div class="speed-row" data-for="audio-player"></div>
       <div class="result-meta">
         <a id="download-btn" class="btn ghost" href="#">⬇️ Scarica</a>
         <span id="result-info"></span>
@@ -61,13 +95,20 @@
     </section>
 
     <section id="history-section">
-      <h2>Cronologia</h2>
+      <div class="history-header">
+        <h2>Cronologia</h2>
+        <select id="category-filter">
+          <option value="">Tutte le cartelle</option>
+        </select>
+      </div>
       <ul id="history" class="history"></ul>
     </section>
 
     <p id="status" role="status"></p>
   </main>
+
   <script src="voices.js"></script>
+  <script src="auth-ui.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

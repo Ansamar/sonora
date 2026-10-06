@@ -12,9 +12,16 @@ async function parseBody(req) {
   return req.body;
 }
 
+// Limita un numero in un intervallo, con valore di default
+function limita(val, min, max, def) {
+  const n = Number(val);
+  if (!Number.isFinite(n)) return def;
+  return Math.min(max, Math.max(min, n));
+}
+
 // Chiama Google Cloud Text-to-Speech (API sincrona: audio base64 direttamente in risposta).
-// La chiave va nella query string, come dimostrato dal test curl del Punto 1.
-async function generateSpeech({ text, voice, format = 'mp3' }) {
+// La chiave va nella query string, come dimostrato dal test del Punto 1.
+async function generateSpeech({ text, voice, format = 'mp3', rate, pitch }) {
   const encoding = FORMATS[format];
   if (!encoding) {
     throw Object.assign(new Error(`Formato non supportato: ${format} (disponibili: mp3, wav)`), { status: 400 });
@@ -31,6 +38,10 @@ async function generateSpeech({ text, voice, format = 'mp3' }) {
   }
   if (!voice) throw Object.assign(new Error('Voce mancante'), { status: 400 });
 
+  // speakingRate: 0.25–4 (1 = normale) · pitch: -20…+20 semitoni (0 = naturale)
+  const speakingRate = limita(rate, 0.25, 4, 1);
+  const pitchVal = limita(pitch, -20, 20, 0);
+
   const url = `https://texttospeech.googleapis.com/v1/text:synthesize?key=${encodeURIComponent(process.env.GOOGLE_TTS_API_KEY)}`;
 
   const res = await fetch(url, {
@@ -39,7 +50,7 @@ async function generateSpeech({ text, voice, format = 'mp3' }) {
     body: JSON.stringify({
       input: { text },
       voice: { languageCode: 'it-IT', name: voice },
-      audioConfig: { audioEncoding: encoding },
+      audioConfig: { audioEncoding: encoding, speakingRate: speakingRate, pitch: pitchVal },
     }),
   });
 
