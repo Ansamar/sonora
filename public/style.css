@@ -1,5 +1,7 @@
 :root { --bg:#0f1117; --card:#181b24; --line:#2a2e3d; --txt:#e8eaf2; --muted:#8b90a5; --accent:#6c8cff; --danger:#ff6c6c; }
 * { box-sizing: border-box; }
+/* L'attributo hidden deve SEMPRE vincere su qualsiasi regola display */
+[hidden] { display: none !important; }
 body { margin:0; font-family:system-ui,sans-serif; background:var(--bg); color:var(--txt); }
 .container { max-width:720px; margin:0 auto; padding:24px 16px 64px; }
 .subtitle { color:var(--muted); margin-top:0; }
@@ -35,12 +37,12 @@ button:disabled { opacity:.5; cursor:wait; }
 h2 { margin-top:0; }
 audio { width:100%; }
 
-/* ─── Miglioria 2: cursori velocità/tono ─── */
+/* ─── Cursori velocità/tono ─── */
 .sliders { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:14px 0 4px; }
 .slider-group label { margin-top:0; }
 input[type="range"] { width:100%; accent-color:var(--accent); }
 
-/* ─── Miglioria 7: pulsanti velocità riproduzione ─── */
+/* ─── Pulsanti velocità riproduzione ─── */
 .speed-row { display:flex; gap:6px; margin-top:6px; }
 .speed-btn { padding:3px 10px; font-size:.78rem; border-radius:6px; background:transparent; border:1px solid var(--line); color:var(--muted); }
 .speed-btn.active { border-color:var(--accent); color:var(--accent); }

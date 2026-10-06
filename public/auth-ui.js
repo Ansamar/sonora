@@ -12,16 +12,17 @@ const loginStatus = $('#login-status');
 function mostraApp() {
   loginScreen.hidden = true;
   app.hidden = false;
-  // Notifica app.js che l'app è visibile (può caricare la cronologia)
+  // Notifica app.js che l'app è visibile (caricherà voci e cronologia)
   document.dispatchEvent(new CustomEvent('sonora:auth'));
 }
 
 async function controllaSessione() {
   try {
-    const res = await fetch('/api/history', { method: 'HEAD' });
+    // GET, non HEAD: l'endpoint history risponde 405 alle richieste HEAD
+    const res = await fetch('/api/history');
     if (res.status === 401) { loginScreen.hidden = false; return; }
     if (res.ok) { mostraApp(); return; }
-    // Qualsiasi altro stato: mostra login per sicurezza
+    // Qualsiasi altro stato: mostra il login per sicurezza
     loginScreen.hidden = false;
   } catch {
     loginScreen.hidden = false;
