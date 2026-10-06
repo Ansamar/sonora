@@ -23,15 +23,15 @@ C=$(curl -s -w "%{http_code}" -X POST "$BASE/api/preview" -H "Content-Type: appl
 echo "HTTP $C · $(wc -c < /tmp/p-voce-a.mp3 | tr -d ' ') bytes · $(file -b /tmp/p-voce-a.mp3 | cut -c1-60)"
 echo ""
 
-echo "── T3b · Google TTS, voce B (uomo) ──"
+echo "── T3b · Google TTS, voce F (uomo) ──"
 C=$(curl -s -w "%{http_code}" -X POST "$BASE/api/preview" -H "Content-Type: application/json" \
-  -d '{"voice":"it-IT-Neural2-B"}' -o /tmp/p-voce-b.mp3)
-echo "HTTP $C · $(wc -c < /tmp/p-voce-b.mp3 | tr -d ' ') bytes · $(file -b /tmp/p-voce-b.mp3 | cut -c1-60)"
+  -d '{"voice":"it-IT-Neural2-F"}' -o /tmp/p-voce-f.mp3)
+echo "HTTP $C · $(wc -c < /tmp/p-voce-f.mp3 | tr -d ' ') bytes · $(file -b /tmp/p-voce-f.mp3 | cut -c1-60)"
 echo ""
 
 echo "── T4 · Pipeline completa (/api/tts) ──"
 C=$(curl -s -w "%{http_code}" -X POST "$BASE/api/tts" -H "Content-Type: application/json" \
-  -d '{"text":"Prova di audit di Sonora.","voice":"it-IT-Neural2-C","format":"mp3"}' -o /tmp/tts.json)
+  -d '{"text":"Prova di audit di Sonora.","voice":"it-IT-Neural2-A","format":"mp3"}' -o /tmp/tts.json)
 echo "HTTP $C · risposta: $(cat /tmp/tts.json | cut -c1-300)"
 echo ""
 
@@ -46,6 +46,6 @@ fi
 echo ""
 echo "Ascolto di conferma:"
 echo "  afplay /tmp/p-voce-a.mp3"
-echo "  afplay /tmp/p-voce-b.mp3"
+echo "  afplay /tmp/p-voce-f.mp3"
 echo ""
 echo "═════════ FINE — incolla tutto questo nella chat ═════════"
