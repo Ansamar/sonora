@@ -5,8 +5,8 @@ module.exports = async (req, res) => {
     node: process.version,
     variabili: {
       DATABASE_URL: Boolean(process.env.DATABASE_URL),
-      NARAKEET_API_KEY: Boolean(process.env.NARAKEET_API_KEY),
+      GOOGLE_TTS_API_KEY: Boolean(process.env.GOOGLE_TTS_API_KEY),
       BLOB_READ_WRITE_TOKEN: Boolean(process.env.BLOB_READ_WRITE_TOKEN),
     },
   });
-}
+};

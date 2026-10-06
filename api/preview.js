@@ -1,4 +1,4 @@
-const { generateSpeech, parseBody } = require('./_lib/narakeet');
+const { generateSpeech, parseBody } = require('./_lib/tts-provider');
 
 // Anteprima breve: non salva nulla né su Blob né su DB
 module.exports = async (req, res) => {

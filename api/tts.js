@@ -1,6 +1,6 @@
 const { put } = require('@vercel/blob');
 const { neon } = require('@neondatabase/serverless');
-const { generateSpeech, parseBody } = require('./_lib/narakeet');
+const { generateSpeech, parseBody } = require('./_lib/tts-provider');
 
 const sql = neon(process.env.DATABASE_URL);
 
