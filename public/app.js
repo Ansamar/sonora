@@ -21,7 +21,7 @@ function fillVoices() {
   previewBtn.disabled = nessunaVoce;
   generateBtn.disabled = nessunaVoce;
   if (nessunaVoce) {
-    setStatus('⚠️ Nessuna voce configurata: aggiungi le voci italiane in public/voices.js');
+    setStatus('⚠️ Nessuna voce configurata: aggiungi le voci in public/voices.js');
   }
 }
 
@@ -70,15 +70,22 @@ previewBtn.addEventListener('click', async (e) => {
   try {
     const res = await fetch('/api/tts', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, voice: voiceSelect.value, format: $('#format').value }),
+      body: JSON.stringify({
+        text,
+        voice: voiceSelect.value,
+        format: $('#format').value,
+        filename: $('#filename').value,
+      }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || `Errore ${res.status}`);
 
+    const nomeCompleto = `${data.filename}.${data.format}`;
     $('#audio-player').src = data.url;
-    $('#download-btn').href = `${data.url}?download=1`; // Vercel Blob: forza il download
+    $('#download-btn').href = data.url;
+    $('#download-btn').dataset.filename = nomeCompleto;
     $('#result-info').textContent =
-      `${data.voice} · ${data.format.toUpperCase()} · ${(data.sizeBytes / 1024).toFixed(0)} KB`;
+      `${nomeCompleto} · ${data.voice} · ${(data.sizeBytes / 1024).toFixed(0)} KB`;
     $('#result').hidden = false;
     setStatus('✅ Audio generato e salvato in cronologia.');
     loadHistory();
@@ -86,7 +93,37 @@ previewBtn.addEventListener('click', async (e) => {
   finally { generateBtn.disabled = false; generateBtn.textContent = '🔊 Genera audio'; }
 });
 
+/* --- Download con nome esatto (l'attributo download funziona solo same-origin:
+       scarichiamo il file via fetch e usiamo un URL locale) --- */
+document.addEventListener('click', async (e) => {
+  const a = e.target.closest('a[data-filename]');
+  if (!a || !a.dataset.filename) return;
+  e.preventDefault();
+  try {
+    const res = await fetch(a.href);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const tmp = document.createElement('a');
+    tmp.href = url;
+    tmp.download = a.dataset.filename;
+    document.body.appendChild(tmp);
+    tmp.click();
+    tmp.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  } catch {
+    window.open(a.href, '_blank'); // fallback: download con nome del percorso Blob
+  }
+});
+
 /* --- Cronologia --- */
+// Recupera il nome dal percorso Blob: /audio/<timestamp>-<nome>.<ext>
+function nomeDaUrl(url, formato) {
+  try {
+    const base = decodeURIComponent(new URL(url).pathname.split('/').pop() || '');
+    return base.replace(/^\d+-/, '').replace(/\.[a-z0-9]+$/i, '') + '.' + formato;
+  } catch { return ''; }
+}
+
 async function loadHistory() {
   try {
     const rows = await (await fetch('/api/history')).json();
@@ -104,7 +141,7 @@ async function loadHistory() {
         <p class="snippet">“${esc(r.text.length > 90 ? r.text.slice(0, 90) + '…' : r.text)}”</p>
         <div class="history-actions">
           <audio controls preload="none" src="${esc(r.url)}"></audio>
-          <a href="${esc(r.url)}?download=1" class="btn ghost" title="Scarica">⬇️</a>
+          <a href="${esc(r.url)}?download=1" class="btn ghost" data-filename="${esc(nomeDaUrl(r.url, r.format))}" title="Scarica">⬇️</a>
           <span class="size">${r.format.toUpperCase()} · ${(r.size_bytes / 1024).toFixed(0)} KB</span>
           <button class="btn danger" data-id="${r.id}" title="Elimina">🗑️</button>
         </div>`;

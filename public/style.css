@@ -4,8 +4,9 @@ body { margin:0; font-family:system-ui,sans-serif; background:var(--bg); color:v
 .container { max-width:720px; margin:0 auto; padding:24px 16px 64px; }
 header p { color:var(--muted); margin-top:0; }
 form, #result, #history-section { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:20px; margin-top:20px; }
-textarea, select { width:100%; background:var(--bg); color:var(--txt); border:1px solid var(--line); border-radius:8px; padding:10px 12px; font:inherit; }
+textarea, select, input[type="text"] { width:100%; background:var(--bg); color:var(--txt); border:1px solid var(--line); border-radius:8px; padding:10px 12px; font:inherit; }
 textarea { resize:vertical; }
+input[type="text"] { margin-top:4px; }
 .meta { text-align:right; color:var(--muted); font-size:.85rem; }
 .options { display:grid; grid-template-columns:1.6fr .7fr; gap:14px; margin:12px 0; }
 .option-group label { display:block; font-size:.8rem; color:var(--muted); margin-bottom:6px; }
