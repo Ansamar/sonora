@@ -1,6 +1,7 @@
 const $ = (s) => document.querySelector(s);
 const previewCache = new Map();
 const PREVIEW_TEXT = "Ciao! Questa è un'anteprima della voce selezionata.";
+const MAX_BOZZA_CHARS = 1500;
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -11,21 +12,54 @@ const previewBtn = $('#preview-btn');
 const previewPlayer = $('#preview-player');
 const previewWrap = $('#preview-player-wrap');
 const categoryFilter = $('#category-filter');
+const workflowStatus = $('#workflow-status');
+const rateInput = $('#rate'), pitchInput = $('#pitch');
 
 // Categorie mai viste: si riempie solo con il caricamento completo (senza filtro)
 const categorieNote = new Set();
 
-/* ─── Miglioria 2: velocità e tono ─── */
-const rateInput = $('#rate'), pitchInput = $('#pitch');
+/* ─── Workflow: bozza ascoltata vs impostazioni correnti ─── */
+// "bozza" = firma dei parametri con cui è stata generata l'ultima bozza ascoltata
+let bozza = null;
+
+function testoBozza() {
+  const t = $('#text').value.trim() || PREVIEW_TEXT;
+  return t.slice(0, MAX_BOZZA_CHARS);
+}
+
+// Firma completa: voce + velocità + tono + testo. Cambia QUALSIASI cosa → cambia firma
+function firmaParametri() {
+  return JSON.stringify([voiceSelect.value, rateInput.value, pitchInput.value, testoBozza()]);
+}
+
+function aggiornaStatoWorkflow() {
+  if (!bozza) {
+    workflowStatus.textContent = '🎧 1) Regola velocità e tono, poi "Prova (bozza)" per ascoltare il tuo testo. 2) Se ti soddisfa: "Genera definitiva".';
+    workflowStatus.className = 'workflow';
+    return;
+  }
+  if (bozza === firmaParametri()) {
+    workflowStatus.textContent = '✅ Bozza ascoltata con QUESTE impostazioni: se ti soddisfa, genera il file definitivo.';
+    workflowStatus.className = 'workflow ok';
+  } else {
+    workflowStatus.textContent = '⚠️ Filtri o testo modificati dopo la bozza: ri-ascolta prima di generare.';
+    workflowStatus.className = 'workflow warn';
+  }
+}
+
+/* ─── Cursori velocità e tono ─── */
 rateInput.addEventListener('input', () => {
   $('#rate-val').textContent = Number(rateInput.value).toFixed(2).replace(/\.?0+$/, '') + '×';
+  aggiornaStatoWorkflow();
 });
 pitchInput.addEventListener('input', () => {
   const v = Number(pitchInput.value);
   $('#pitch-val').textContent = (v > 0 ? '+' : '') + v;
+  aggiornaStatoWorkflow();
 });
+voiceSelect.addEventListener('change', aggiornaStatoWorkflow);
 
-/* ─── Miglioria 7: pulsanti velocità di riproduzione ─── */
+/* ─── Pulsanti velocità di riproduzione (1× / 1.25× / 1.5× / 2×) ─── */
 const VELOCITA = [1, 1.25, 1.5, 2];
 function creaSpeedRow(row) {
   const target = document.querySelector(`#${row.dataset.for}`);
@@ -42,7 +76,6 @@ function creaSpeedRow(row) {
     });
     row.appendChild(b);
   });
-  // Reset a 1× quando cambia la sorgente audio
   target.addEventListener('loadedmetadata', () => {
     target.playbackRate = 1;
     row.querySelectorAll('.speed-btn').forEach((x) => x.classList.remove('active'));
@@ -50,7 +83,7 @@ function creaSpeedRow(row) {
 }
 document.querySelectorAll('.speed-row').forEach(creaSpeedRow);
 
-/* --- Popola il menu voci (e gestisce il caso "nessuna voce") --- */
+/* ─── Popola il menu voci (e gestisce il caso "nessuna voce") ─── */
 function fillVoices() {
   voiceSelect.innerHTML = '';
   VOICES.voices.forEach((v) => voiceSelect.add(new Option(v.label, v.id)));
@@ -65,39 +98,64 @@ function fillVoices() {
 }
 
 /* --- Contatore caratteri --- */
- $('#text').addEventListener('input', (e) => { $('#char-count').textContent = e.target.value.length; });
- $('#tts-form').addEventListener('reset', () => { $('#char-count').textContent = '0'; });
+ $('#text').addEventListener('input', (e) => {
+  $('#char-count').textContent = e.target.value.length;
+  aggiornaStatoWorkflow();
+});
+ $('#tts-form').addEventListener('reset', () => {
+  $('#char-count').textContent = '0';
+  bozza = null;
+  aggiornaStatoWorkflow();
+});
 
-/* --- Anteprima voce: lettore visibile in pagina --- */
+/* --- BOZZA: legge il testo reale con voce, velocità e tono correnti --- */
 previewBtn.addEventListener('click', async (e) => {
   const btn = e.currentTarget, voice = voiceSelect.value;
   if (!voice) return;
 
+  const testo = testoBozza();
+  if ($('#text').value.trim().length > MAX_BOZZA_CHARS) {
+    setStatus(`ℹ️ Bozza limitata ai primi ${MAX_BOZZA_CHARS} caratteri; il file definitivo sarà completo.`);
+  }
+
+  const chiave = firmaParametri();
   const playUrl = (url) => {
     previewPlayer.src = url;
     previewWrap.hidden = false;
     previewPlayer.play().catch(() => {
-      setStatus("▶ Premi play sul lettore qui sotto per ascoltare l'anteprima.");
+      setStatus("▶ Premi play sul lettore qui sotto per ascoltare la bozza.");
     });
   };
 
-  if (previewCache.has(voice)) return playUrl(previewCache.get(voice));
+  if (previewCache.has(chiave)) {
+    playUrl(previewCache.get(chiave));
+    bozza = chiave;
+    aggiornaStatoWorkflow();
+    return;
+  }
 
   btn.disabled = true; btn.textContent = '⏳…';
   try {
     const res = await fetch('/api/preview', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ voice, text: PREVIEW_TEXT, rate: rateInput.value, pitch: pitchInput.value }),
+      body: JSON.stringify({ voice, text: testo, rate: rateInput.value, pitch: pitchInput.value }),
     });
-    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Errore anteprima');
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Errore bozza');
     const url = URL.createObjectURL(await res.blob());
-    previewCache.set(voice, url);
+    previewCache.set(chiave, url);
+    if (previewCache.size > 12) {
+      const prima = previewCache.keys().next().value;
+      URL.revokeObjectURL(previewCache.get(prima));
+      previewCache.delete(prima);
+    }
+    bozza = chiave;
+    aggiornaStatoWorkflow();
     playUrl(url);
   } catch (err) { setStatus(`❌ ${err.message}`, true); }
-  finally { btn.disabled = false; btn.textContent = '▶ Anteprima'; }
+  finally { btn.disabled = false; btn.textContent = '🎧 Prova (bozza)'; }
 });
 
-/* --- Generazione --- */
+/* --- GENERAZIONE DEFINITIVA --- */
  $('#tts-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const text = $('#text').value.trim();
@@ -128,10 +186,10 @@ previewBtn.addEventListener('click', async (e) => {
     $('#result-info').textContent =
       `📁 ${data.category} · ${nomeCompleto} · ${(data.sizeBytes / 1024).toFixed(0)} KB`;
     $('#result').hidden = false;
-    setStatus('✅ Audio generato e salvato in cronologia.');
+    setStatus('✅ FILE DEFINITIVO creato: ascoltalo qui sopra o scaricalo.');
     loadHistory(categoryFilter.value);
   } catch (err) { setStatus(`❌ ${err.message}`, true); }
-  finally { generateBtn.disabled = false; generateBtn.textContent = '🔊 Genera audio'; }
+  finally { generateBtn.disabled = false; generateBtn.textContent = '✅ Genera definitiva'; }
 });
 
 /* --- Cronologia --- */
@@ -142,6 +200,15 @@ function aggiornaFiltroCategorie() {
   [...categorieNote].sort().forEach((c) => categoryFilter.add(new Option('📁 ' + c, c)));
   categoryFilter.value = selezione;
   if (categoryFilter.selectedIndex === -1) categoryFilter.value = '';
+
+  // Suggerimenti automatici nel campo Cartella (datalist)
+  const dl = $('#cartelle-esistenti');
+  dl.innerHTML = '';
+  [...categorieNote].sort().forEach((c) => {
+    const opt = document.createElement('option');
+    opt.value = c;
+    dl.appendChild(opt);
+  });
 }
 
 async function loadHistory(categoria = '') {
@@ -149,7 +216,6 @@ async function loadHistory(categoria = '') {
     const q = categoria ? `?category=${encodeURIComponent(categoria)}` : '';
     const rows = await (await fetch('/api/history' + q)).json();
 
-    // L'elenco delle categorie si aggiorna solo quando carichiamo TUTTE le righe
     if (!categoria) {
       categorieNote.clear();
       rows.forEach((r) => categorieNote.add(r.category || 'generale'));
@@ -198,4 +264,5 @@ function setStatus(msg, isError = false) {
 document.addEventListener('sonora:auth', () => {
   fillVoices();
   loadHistory();
+  aggiornaStatoWorkflow();
 });

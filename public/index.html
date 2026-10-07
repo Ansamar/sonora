@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sonora – Dashboard TTS</title>
-  <link rel="stylesheet" href="style.css?v=3" />
+  <link rel="stylesheet" href="style.css?v=5" />
 </head>
 <body>
   <!-- Schermata di login (visibile finché non si è autenticati) -->
@@ -39,8 +39,9 @@
         </div>
         <div>
           <label for="category">Cartella (opzionale)</label>
-          <input type="text" id="category" maxlength="40"
+          <input type="text" id="category" maxlength="40" list="cartelle-esistenti"
             placeholder="es. poesie, lezioni — vuoto = generale" />
+          <datalist id="cartelle-esistenti"></datalist>
         </div>
       </div>
 
@@ -49,7 +50,7 @@
           <label for="voice">Voce</label>
           <div class="voice-row">
             <select id="voice"></select>
-            <button type="button" id="preview-btn">▶ Anteprima</button>
+            <button type="button" id="preview-btn" title="Ascolta una bozza del testo attuale con voce, velocità e tono scelti">🎧 Prova (bozza)</button>
           </div>
         </div>
         <div class="option-group">
@@ -72,20 +73,23 @@
         </div>
       </div>
 
-      <!-- Lettore anteprima: appare dopo il primo click su ▶ Anteprima -->
+      <!-- Indicatore del workflow: dice se le impostazioni sono state validate in bozza -->
+      <div id="workflow-status" class="workflow" role="status"></div>
+
+      <!-- Lettore bozza: appare dopo il primo click su Prova -->
       <div id="preview-player-wrap" hidden>
         <audio id="preview-player" controls></audio>
         <div class="speed-row" data-for="preview-player"></div>
       </div>
 
       <div class="actions">
-        <button type="submit" id="generate-btn">🔊 Genera audio</button>
+        <button type="submit" id="generate-btn">✅ Genera definitiva</button>
         <button type="reset">Pulisci</button>
       </div>
     </form>
 
     <section id="result" hidden>
-      <h2>Ultima generazione</h2>
+      <h2>File definitivo</h2>
       <audio id="audio-player" controls></audio>
       <div class="speed-row" data-for="audio-player"></div>
       <div class="result-meta">
@@ -107,8 +111,8 @@
     <p id="status" role="status"></p>
   </main>
 
-  <script src="voices.js?v=3"></script>
-  <script src="auth-ui.js?v=3"></script>
-  <script src="app.js?v=3"></script>
+  <script src="voices.js?v=5"></script>
+  <script src="auth-ui.js?v=5"></script>
+  <script src="app.js?v=5"></script>
 </body>
 </html>
