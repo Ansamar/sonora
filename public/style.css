@@ -16,7 +16,12 @@ body { margin:0; font-family:system-ui,sans-serif; background:var(--bg); color:v
 
 .app-header { display:flex; justify-content:space-between; align-items:center; }
 
-form, #result, #history-section { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:20px; margin-top:20px; }
+/* ─── Schede ─── */
+.tabs { display:flex; gap:8px; margin-top:20px; flex-wrap:wrap; }
+.tab-btn { background:transparent; border:1px solid var(--line); color:var(--muted); }
+.tab-btn.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+
+form, #result, #history-section, .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:20px; margin-top:20px; }
 textarea, select, input[type="text"], input[type="password"] { width:100%; background:var(--bg); color:var(--txt); border:1px solid var(--line); border-radius:8px; padding:10px 12px; font:inherit; }
 textarea { resize:vertical; }
 label { display:block; font-size:.8rem; color:var(--muted); margin-bottom:6px; margin-top:10px; }
@@ -41,10 +46,13 @@ input[type="range"] { width:100%; accent-color:var(--accent); }
 .speed-btn { padding:3px 10px; font-size:.78rem; border-radius:6px; background:transparent; border:1px solid var(--line); color:var(--muted); }
 .speed-btn.active { border-color:var(--accent); color:var(--accent); }
 
-/* ─── Indicatore del workflow (bozza → definitiva) ─── */
 .workflow { margin-top:14px; padding:10px 12px; border-radius:8px; font-size:.85rem; border:1px dashed var(--line); color:var(--muted); }
 .workflow.ok { border:1px solid #2e7d32; color:#81c784; background:rgba(46,125,50,.08); }
 .workflow.warn { border:1px solid #b8860b; color:#e6c34a; background:rgba(184,134,11,.08); }
+
+.mf-log { margin-top:14px; display:grid; gap:6px; font-size:.85rem; color:var(--muted); }
+.mf-log .err { color:var(--danger); }
+.mf-log .mf-fine { color:var(--accent); }
 
 .result-meta { display:flex; gap:12px; align-items:center; color:var(--muted); font-size:.9rem; margin-top:10px; flex-wrap:wrap; }
 .history-header { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px; }

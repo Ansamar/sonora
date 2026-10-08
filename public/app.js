@@ -2,62 +2,53 @@ const $ = (s) => document.querySelector(s);
 const previewCache = new Map();
 const PREVIEW_TEXT = "Ciao! Questa è un'anteprima della voce selezionata.";
 const MAX_BOZZA_CHARS = 1500;
+const SOGLIA_MULTI = 3800;
+const MAX_BLOCCO = 2200;
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-const voiceSelect = $('#voice');
-const generateBtn = $('#generate-btn');
-const previewBtn = $('#preview-btn');
-const previewPlayer = $('#preview-player');
-const previewWrap = $('#preview-player-wrap');
-const categoryFilter = $('#category-filter');
-const workflowStatus = $('#workflow-status');
-const rateInput = $('#rate'), pitchInput = $('#pitch');
-
-// Categorie mai viste: si riempie solo con il caricamento completo (senza filtro)
-const categorieNote = new Set();
-
-/* ─── Workflow: bozza ascoltata vs impostazioni correnti ─── */
-// "bozza" = firma dei parametri con cui è stata generata l'ultima bozza ascoltata
-let bozza = null;
-
-function testoBozza() {
-  const t = $('#text').value.trim() || PREVIEW_TEXT;
-  return t.slice(0, MAX_BOZZA_CHARS);
+function slugBase(s, max = 70) {
+  return String(s || '')
+    .normalize('NFC')
+    .replace(/[^\p{L}\p{N} _-]/gu, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .slice(0, max);
 }
 
-// Firma completa: voce + velocità + tono + testo. Cambia QUALSIASI cosa → cambia firma
-function firmaParametri() {
-  return JSON.stringify([voiceSelect.value, rateInput.value, pitchInput.value, testoBozza()]);
-}
-
-function aggiornaStatoWorkflow() {
-  if (!bozza) {
-    workflowStatus.textContent = '🎧 1) Regola velocità e tono, poi "Prova (bozza)" per ascoltare il tuo testo. 2) Se ti soddisfa: "Genera definitiva".';
-    workflowStatus.className = 'workflow';
-    return;
+function spezzaTesto(testo, maxLen = MAX_BLOCCO) {
+  const frasi = (testo.replace(/\r?\n/g, ' ').match(/[^.!?…]+[.!?…]*/g) || [testo])
+    .map((s) => s.trim()).filter(Boolean);
+  const blocchi = [];
+  let att = '';
+  for (let frase of frasi) {
+    if (frase.length > maxLen) {
+      if (att) { blocchi.push(att); att = ''; }
+      while (frase.length > maxLen) {
+        let taglio = frase.lastIndexOf(' ', maxLen);
+        if (taglio < maxLen * 0.5) taglio = maxLen;
+        blocchi.push(frase.slice(0, taglio).trim());
+        frase = frase.slice(taglio).trim();
+      }
+      att = frase;
+      continue;
+    }
+    if (!att) { att = frase; continue; }
+    if ((att + ' ' + frase).length > maxLen) { blocchi.push(att); att = frase; }
+    else att += ' ' + frase;
   }
-  if (bozza === firmaParametri()) {
-    workflowStatus.textContent = '✅ Bozza ascoltata con QUESTE impostazioni: se ti soddisfa, genera il file definitivo.';
-    workflowStatus.className = 'workflow ok';
-  } else {
-    workflowStatus.textContent = '⚠️ Filtri o testo modificati dopo la bozza: ri-ascolta prima di generare.';
-    workflowStatus.className = 'workflow warn';
-  }
+  if (att) blocchi.push(att);
+  return blocchi;
 }
 
-/* ─── Cursori velocità e tono ─── */
-rateInput.addEventListener('input', () => {
-  $('#rate-val').textContent = Number(rateInput.value).toFixed(2).replace(/\.?0+$/, '') + '×';
-  aggiornaStatoWorkflow();
-});
-pitchInput.addEventListener('input', () => {
-  const v = Number(pitchInput.value);
-  $('#pitch-val').textContent = (v > 0 ? '+' : '') + v;
-  aggiornaStatoWorkflow();
-});
-voiceSelect.addEventListener('change', aggiornaStatoWorkflow);
+/* ─── Navigazione a schede ─── */
+function apriTab(id) {
+  document.querySelectorAll('.tab-btn').forEach((b) => b.classList.toggle('active', b.dataset.tab === id));
+  document.querySelectorAll('.tab-view').forEach((v) => { v.hidden = v.id !== id; });
+}
+document.querySelectorAll('.tab-btn').forEach((btn) =>
+  btn.addEventListener('click', () => apriTab(btn.dataset.tab)));
 
 /* ─── Pulsanti velocità di riproduzione (1× / 1.25× / 1.5× / 2×) ─── */
 const VELOCITA = [1, 1.25, 1.5, 2];
@@ -83,21 +74,62 @@ function creaSpeedRow(row) {
 }
 document.querySelectorAll('.speed-row').forEach(creaSpeedRow);
 
-/* ─── Popola il menu voci (e gestisce il caso "nessuna voce") ─── */
+/* ══════════════ SCHEDA SINTESI ══════════════ */
+const voiceSelect = $('#voice');
+const generateBtn = $('#generate-btn');
+const previewBtn = $('#preview-btn');
+const previewPlayer = $('#preview-player');
+const previewWrap = $('#preview-player-wrap');
+const workflowStatus = $('#workflow-status');
+const rateInput = $('#rate'), pitchInput = $('#pitch');
+
+const categorieNote = new Set();
+let bozza = null;
+
+function testoBozza() {
+  const t = $('#text').value.trim() || PREVIEW_TEXT;
+  return t.slice(0, MAX_BOZZA_CHARS);
+}
+function firmaParametri() {
+  return JSON.stringify([voiceSelect.value, rateInput.value, pitchInput.value, testoBozza()]);
+}
+function aggiornaStatoWorkflow() {
+  const lungh = $('#text').value.trim().length;
+  if (!bozza) {
+    workflowStatus.textContent = '🎧 1) Regola velocità e tono, poi "Prova (bozza)". 2) Se ti soddisfa: "Genera definitiva".';
+    workflowStatus.className = 'workflow';
+    return;
+  }
+  if (bozza === firmaParametri()) {
+    workflowStatus.textContent = '✅ Bozza ascoltata con QUESTE impostazioni: se ti soddisfa, genera il file definitivo.';
+    workflowStatus.className = 'workflow ok';
+  } else {
+    workflowStatus.textContent = '⚠️ Filtri o testo modificati dopo la bozza: ri-ascolta prima di generare.';
+    workflowStatus.className = 'workflow warn';
+  }
+}
+
+rateInput.addEventListener('input', () => {
+  $('#rate-val').textContent = Number(rateInput.value).toFixed(2).replace(/\.?0+$/, '') + '×';
+  aggiornaStatoWorkflow();
+});
+pitchInput.addEventListener('input', () => {
+  const v = Number(pitchInput.value);
+  $('#pitch-val').textContent = (v > 0 ? '+' : '') + v;
+  aggiornaStatoWorkflow();
+});
+voiceSelect.addEventListener('change', aggiornaStatoWorkflow);
+
 function fillVoices() {
   voiceSelect.innerHTML = '';
   VOICES.voices.forEach((v) => voiceSelect.add(new Option(v.label, v.id)));
-
   const nessunaVoce = VOICES.voices.length === 0;
   voiceSelect.disabled = nessunaVoce;
   previewBtn.disabled = nessunaVoce;
   generateBtn.disabled = nessunaVoce;
-  if (nessunaVoce) {
-    setStatus('⚠️ Nessuna voce configurata: aggiungi le voci in public/voices.js');
-  }
+  if (nessunaVoce) setStatus('⚠️ Nessuna voce configurata: aggiungi le voci in public/voices.js');
 }
 
-/* --- Contatore caratteri --- */
  $('#text').addEventListener('input', (e) => {
   $('#char-count').textContent = e.target.value.length;
   aggiornaStatoWorkflow();
@@ -108,25 +140,21 @@ function fillVoices() {
   aggiornaStatoWorkflow();
 });
 
-/* --- BOZZA: legge il testo reale con voce, velocità e tono correnti --- */
 previewBtn.addEventListener('click', async (e) => {
   const btn = e.currentTarget, voice = voiceSelect.value;
   if (!voice) return;
 
   const testo = testoBozza();
   if ($('#text').value.trim().length > MAX_BOZZA_CHARS) {
-    setStatus(`ℹ️ Bozza limitata ai primi ${MAX_BOZZA_CHARS} caratteri; il file definitivo sarà completo.`);
+    setStatus(`ℹ️ Bozza limitata ai primi ${MAX_BOZZA_CHARS} caratteri; la generazione sarà completa.`);
   }
 
   const chiave = firmaParametri();
   const playUrl = (url) => {
     previewPlayer.src = url;
     previewWrap.hidden = false;
-    previewPlayer.play().catch(() => {
-      setStatus("▶ Premi play sul lettore qui sotto per ascoltare la bozza.");
-    });
+    previewPlayer.play().catch(() => setStatus('▶ Premi play sul lettore per ascoltare la bozza.'));
   };
-
   if (previewCache.has(chiave)) {
     playUrl(previewCache.get(chiave));
     bozza = chiave;
@@ -155,26 +183,24 @@ previewBtn.addEventListener('click', async (e) => {
   finally { btn.disabled = false; btn.textContent = '🎧 Prova (bozza)'; }
 });
 
-/* --- GENERAZIONE DEFINITIVA --- */
  $('#tts-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const text = $('#text').value.trim();
   if (!text) return;
+  if (text.length > 4000) {
+    setStatus('⚠️ Testo oltre il limite di un file (4000 caratteri): usa la scheda "📚 Multi-file".', true);
+    return;
+  }
 
   generateBtn.disabled = true; generateBtn.textContent = '⏳ Generazione…';
   setStatus('Conversione in corso…');
-
   try {
     const res = await fetch('/api/tts', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        text,
-        voice: voiceSelect.value,
-        format: $('#format').value,
-        filename: $('#filename').value,
-        category: $('#category').value,
-        rate: rateInput.value,
-        pitch: pitchInput.value,
+        text, voice: voiceSelect.value, format: $('#format').value,
+        filename: $('#filename').value, category: $('#category').value,
+        rate: rateInput.value, pitch: pitchInput.value,
       }),
     });
     const data = await res.json();
@@ -192,7 +218,175 @@ previewBtn.addEventListener('click', async (e) => {
   finally { generateBtn.disabled = false; generateBtn.textContent = '✅ Genera definitiva'; }
 });
 
-/* --- Cronologia --- */
+/* ══════════════ SCHEDA MULTI-FILE ══════════════ */
+const mfText = $('#mf-text'), mfRate = $('#mf-rate'), mfPitch = $('#mf-pitch');
+const mfPreviewBtn = $('#mf-preview-btn');
+const mfPreviewPlayer = $('#mf-preview-player');
+const mfPreviewWrap = $('#mf-preview-wrap');
+const mfWorkflow = $('#mf-workflow');
+const mfStart = $('#mf-start');
+const mfProgress = $('#mf-progress');
+const mfGoHistory = $('#mf-go-history');
+let mfBozza = null;
+
+// La bozza del batch usa una voce fissa (i file finali useranno voci casuali):
+// ciò che si valida qui è il testo, la velocità e il tono.
+const MF_VOCE_BOZZA = VOICES.voices[0];
+
+function mfTestoBozza() { return mfText.value.trim().slice(0, MAX_BOZZA_CHARS); }
+function mfFirma() {
+  return JSON.stringify([mfRate.value, mfPitch.value, mfTestoBozza()]);
+}
+function mfAggiornaStato() {
+  const lungh = mfText.value.trim().length;
+  if (!mfBozza) {
+    mfWorkflow.textContent = '🎧 Regola velocità e tono, ascolta la bozza dell\'inizio del testo, poi avvia. I file useranno voci casuali.' +
+      (lungh ? '' : ' (Incolla prima il testo.)');
+    mfWorkflow.className = 'workflow';
+    return;
+  }
+  if (mfBozza === mfFirma()) {
+    mfWorkflow.textContent = '✅ Bozza ascoltata con QUESTE impostazioni: puoi avviare il batch.';
+    mfWorkflow.className = 'workflow ok';
+  } else {
+    mfWorkflow.textContent = '⚠️ Filtri o testo modificati dopo la bozza: ri-ascolta prima di avviare.';
+    mfWorkflow.className = 'workflow warn';
+  }
+}
+
+mfText.addEventListener('input', () => {
+  $('#mf-count').textContent = mfText.value.length;
+  mfAggiornaStato();
+});
+mfRate.addEventListener('input', () => {
+  $('#mf-rate-val').textContent = Number(mfRate.value).toFixed(2).replace(/\.?0+$/, '') + '×';
+  mfAggiornaStato();
+});
+mfPitch.addEventListener('input', () => {
+  const v = Number(mfPitch.value);
+  $('#mf-pitch-val').textContent = (v > 0 ? '+' : '') + v;
+  mfAggiornaStato();
+});
+
+mfPreviewBtn.addEventListener('click', async () => {
+  if (!MF_VOCE_BOZZA) return;
+  const testo = mfTestoBozza();
+  if (!testo) { setStatus('⚠️ Incolla prima il testo lungo.', true); return; }
+
+  const chiave = mfFirma();
+  const playUrl = (url) => {
+    mfPreviewPlayer.src = url;
+    mfPreviewWrap.hidden = false;
+    mfPreviewPlayer.play().catch(() => setStatus('▶ Premi play sul lettore per ascoltare la bozza.'));
+  };
+  if (previewCache.has(chiave)) {
+    playUrl(previewCache.get(chiave));
+    mfBozza = chiave;
+    mfAggiornaStato();
+    return;
+  }
+
+  mfPreviewBtn.disabled = true; mfPreviewBtn.textContent = '⏳…';
+  try {
+    const res = await fetch('/api/preview', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ voice: MF_VOCE_BOZZA.id, text: testo, rate: mfRate.value, pitch: mfPitch.value }),
+    });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Errore bozza');
+    const url = URL.createObjectURL(await res.blob());
+    previewCache.set(chiave, url);
+    mfBozza = chiave;
+    mfAggiornaStato();
+    playUrl(url);
+  } catch (err) { setStatus(`❌ ${err.message}`, true); }
+  finally { mfPreviewBtn.disabled = false; mfPreviewBtn.textContent = '🎧 Prova (inizio)'; }
+});
+
+mfStart.addEventListener('click', async () => {
+  const testo = mfText.value.trim();
+  if (!testo) { setStatus('⚠️ Incolla il testo lungo da suddividere.', true); return; }
+  if (mfBozza !== mfFirma()) {
+    setStatus('⚠️ Valida prima i filtri con "🎧 Prova (inizio)" (il banner deve essere ✅).', true);
+    return;
+  }
+
+  const blocchi = spezzaTesto(testo);
+  if (blocchi.length < 2) {
+    setStatus('ℹ️ Il testo rientra in un unico file: usa la scheda "🎙️ Sintesi".', true);
+    return;
+  }
+
+  const caratteriTotali = blocchi.reduce((s, b) => s + b.length, 0);
+  if (!confirm(
+    `📚 MULTI-FILE\n\n` +
+    `Il testo sarà suddiviso in ${blocchi.length} file ` +
+    `(≈${caratteriTotali.toLocaleString('it-IT')} caratteri in totale),\n` +
+    `con voce casuale per ciascun file.\n\n` +
+    `Consuma crediti reali. Procedere?`
+  )) return;
+
+  mfStart.disabled = true;
+  const nomeBase = slugBase($('#mf-filename').value) || 'brano';
+  const categoria = slugBase($('#mf-category').value, 40) || 'generale';
+  const formato = $('#mf-format').value;
+  const cifre = String(blocchi.length).length;
+
+  mfProgress.innerHTML = '';
+  mfGoHistory.hidden = true;
+
+  try {
+    let generati = 0;
+    for (let i = 0; i < blocchi.length; i++) {
+      const voce = VOICES.voices[Math.floor(Math.random() * VOICES.voices.length)];
+      setStatus(`📚 File ${i + 1}/${blocchi.length} · ${voce.label}…`);
+
+      const res = await fetch('/api/tts', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: blocchi[i], voice: voce.id, format: formato,
+          filename: `${nomeBase}-${String(i + 1).padStart(cifre, '0')}`,
+          category: categoria, rate: mfRate.value, pitch: mfPitch.value,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(`File ${i + 1} (${voce.label}): ${data.error || `Errore ${res.status}`}`);
+      generati++;
+
+      const riga = document.createElement('div');
+      riga.textContent = `✅ ${nomeBase}-${String(i + 1).padStart(cifre, '0')}.${formato} · ${voce.label} · ${(data.sizeBytes / 1024).toFixed(0)} KB`;
+      mfProgress.appendChild(riga);
+    }
+
+    const fine = document.createElement('div');
+    fine.className = 'mf-fine';
+    fine.textContent = `— Completato: ${generati}/${blocchi.length} file —`;
+    mfProgress.appendChild(fine);
+    mfGoHistory.hidden = false;
+    mfGoHistory.dataset.category = categoria;
+    setStatus(`✅ ${generati} file generati (cartella "📁 ${categoria}").`);
+    loadHistory(categoryFilter.value);
+  } catch (err) {
+    const div = document.createElement('div');
+    div.className = 'err';
+    div.textContent = `❌ ${err.message} — i file già generati sono al sicuro in cronologia.`;
+    mfProgress.appendChild(div);
+    setStatus(`❌ ${err.message}`, true);
+    loadHistory(categoryFilter.value);
+  } finally {
+    mfStart.disabled = false;
+  }
+});
+
+mfGoHistory.addEventListener('click', () => {
+  apriTab('tab-cronologia');
+  categoryFilter.value = mfGoHistory.dataset.category || '';
+  if (categoryFilter.selectedIndex === -1) categoryFilter.value = '';
+  loadHistory(categoryFilter.value);
+});
+
+/* ══════════════ CRONOLOGIA ══════════════ */
+const categoryFilter = $('#category-filter');
+
 function aggiornaFiltroCategorie() {
   const selezione = categoryFilter.value;
   categoryFilter.innerHTML = '';
@@ -201,7 +395,6 @@ function aggiornaFiltroCategorie() {
   categoryFilter.value = selezione;
   if (categoryFilter.selectedIndex === -1) categoryFilter.value = '';
 
-  // Suggerimenti automatici nel campo Cartella (datalist)
   const dl = $('#cartelle-esistenti');
   dl.innerHTML = '';
   [...categorieNote].sort().forEach((c) => {
@@ -265,4 +458,5 @@ document.addEventListener('sonora:auth', () => {
   fillVoices();
   loadHistory();
   aggiornaStatoWorkflow();
+  mfAggiornaStato();
 });

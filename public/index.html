@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sonora – Dashboard TTS</title>
-  <link rel="stylesheet" href="style.css?v=5" />
+  <link rel="stylesheet" href="style.css?v=7" />
 </head>
 <body>
   <!-- Schermata di login (visibile finché non si è autenticati) -->
@@ -25,94 +25,165 @@
     </header>
     <p class="subtitle">Text-to-Speech in italiano con Google Cloud Text-to-Speech</p>
 
-    <form id="tts-form">
-      <label for="text">Testo da convertire</label>
-      <textarea id="text" rows="8" required
-        placeholder="Scrivi qui il testo da trasformare in audio..."></textarea>
-      <div class="meta"><span id="char-count">0</span> caratteri</div>
+    <nav class="tabs">
+      <button type="button" class="tab-btn active" data-tab="tab-sintesi">🎙️ Sintesi</button>
+      <button type="button" class="tab-btn" data-tab="tab-multi">📚 Multi-file</button>
+      <button type="button" class="tab-btn" data-tab="tab-cronologia">🕘 Cronologia</button>
+    </nav>
 
-      <div class="dest-grid">
-        <div>
-          <label for="filename">Nome del file (opzionale)</label>
-          <input type="text" id="filename" maxlength="80"
-            placeholder="es. miei-promemoria — vuoto = nome automatico" />
-        </div>
-        <div>
-          <label for="category">Cartella (opzionale)</label>
-          <input type="text" id="category" maxlength="40" list="cartelle-esistenti"
-            placeholder="es. poesie, lezioni — vuoto = generale" />
-          <datalist id="cartelle-esistenti"></datalist>
-        </div>
-      </div>
+    <!-- ══════════ SCHEDA SINTESI ══════════ -->
+    <section id="tab-sintesi" class="tab-view">
+      <form id="tts-form">
+        <label for="text">Testo da convertire</label>
+        <textarea id="text" rows="8" required
+          placeholder="Scrivi qui il testo da trasformare in audio..."></textarea>
+        <div class="meta"><span id="char-count">0</span> caratteri</div>
 
-      <div class="options">
-        <div class="option-group">
-          <label for="voice">Voce</label>
-          <div class="voice-row">
-            <select id="voice"></select>
-            <button type="button" id="preview-btn" title="Ascolta una bozza del testo attuale con voce, velocità e tono scelti">🎧 Prova (bozza)</button>
+        <div class="dest-grid">
+          <div>
+            <label for="filename">Nome del file (opzionale)</label>
+            <input type="text" id="filename" maxlength="80"
+              placeholder="es. miei-promemoria — vuoto = nome automatico" />
+          </div>
+          <div>
+            <label for="category">Cartella (opzionale)</label>
+            <input type="text" id="category" maxlength="40" list="cartelle-esistenti"
+              placeholder="es. poesie, lezioni — vuoto = generale" />
           </div>
         </div>
-        <div class="option-group">
-          <label for="format">Formato</label>
-          <select id="format">
-            <option value="mp3" selected>MP3</option>
-            <option value="wav">WAV</option>
-          </select>
+
+        <div class="options">
+          <div class="option-group">
+            <label for="voice">Voce</label>
+            <div class="voice-row">
+              <select id="voice"></select>
+              <button type="button" id="preview-btn" title="Ascolta una bozza del testo attuale con voce, velocità e tono scelti">🎧 Prova (bozza)</button>
+            </div>
+          </div>
+          <div class="option-group">
+            <label for="format">Formato</label>
+            <select id="format">
+              <option value="mp3" selected>MP3</option>
+              <option value="wav">WAV</option>
+            </select>
+          </div>
         </div>
-      </div>
 
-      <div class="sliders">
-        <div class="slider-group">
-          <label for="rate">Velocità: <span id="rate-val">1×</span></label>
-          <input type="range" id="rate" min="0.25" max="4" step="0.05" value="1" />
+        <div class="sliders">
+          <div class="slider-group">
+            <label for="rate">Velocità: <span id="rate-val">1×</span></label>
+            <input type="range" id="rate" min="0.25" max="4" step="0.05" value="1" />
+          </div>
+          <div class="slider-group">
+            <label for="pitch">Tono: <span id="pitch-val">0</span></label>
+            <input type="range" id="pitch" min="-10" max="10" step="0.5" value="0" />
+          </div>
         </div>
-        <div class="slider-group">
-          <label for="pitch">Tono: <span id="pitch-val">0</span></label>
-          <input type="range" id="pitch" min="-10" max="10" step="0.5" value="0" />
+
+        <div id="workflow-status" class="workflow" role="status"></div>
+
+        <div id="preview-player-wrap" hidden>
+          <audio id="preview-player" controls></audio>
+          <div class="speed-row" data-for="preview-player"></div>
         </div>
-      </div>
 
-      <!-- Indicatore del workflow: dice se le impostazioni sono state validate in bozza -->
-      <div id="workflow-status" class="workflow" role="status"></div>
+        <div class="actions">
+          <button type="submit" id="generate-btn">✅ Genera definitiva</button>
+          <button type="reset">Pulisci</button>
+        </div>
+      </form>
 
-      <!-- Lettore bozza: appare dopo il primo click su Prova -->
-      <div id="preview-player-wrap" hidden>
-        <audio id="preview-player" controls></audio>
-        <div class="speed-row" data-for="preview-player"></div>
-      </div>
+      <section id="result" hidden>
+        <h2>File definitivo</h2>
+        <audio id="audio-player" controls></audio>
+        <div class="speed-row" data-for="audio-player"></div>
+        <div class="result-meta">
+          <a id="download-btn" class="btn ghost" href="#">⬇️ Scarica</a>
+          <span id="result-info"></span>
+        </div>
+      </section>
+    </section>
 
-      <div class="actions">
-        <button type="submit" id="generate-btn">✅ Genera definitiva</button>
-        <button type="reset">Pulisci</button>
-      </div>
-    </form>
+    <!-- ══════════ SCHEDA MULTI-FILE ══════════ -->
+    <section id="tab-multi" class="tab-view" hidden>
+      <div class="card">
+        <label for="mf-text">Testo lungo (sarà suddiviso automaticamente in più file)</label>
+        <textarea id="mf-text" rows="10"
+          placeholder="Incolla qui articoli, capitoli, dispensre..."></textarea>
+        <div class="meta"><span id="mf-count">0</span> caratteri</div>
 
-    <section id="result" hidden>
-      <h2>File definitivo</h2>
-      <audio id="audio-player" controls></audio>
-      <div class="speed-row" data-for="audio-player"></div>
-      <div class="result-meta">
-        <a id="download-btn" class="btn ghost" href="#">⬇️ Scarica</a>
-        <span id="result-info"></span>
+        <div class="dest-grid">
+          <div>
+            <label for="mf-filename">Nome di base dei file (opzionale)</label>
+            <input type="text" id="mf-filename" maxlength="80"
+              placeholder="es. dante → dante-1.mp3, dante-2.mp3..." />
+          </div>
+          <div>
+            <label for="mf-category">Cartella (opzionale)</label>
+            <input type="text" id="mf-category" maxlength="40" list="cartelle-esistenti"
+              placeholder="es. libri — vuoto = generale" />
+          </div>
+        </div>
+        <datalist id="cartelle-esistenti"></datalist>
+
+        <div class="options">
+          <div class="option-group">
+            <label for="mf-format">Formato</label>
+            <select id="mf-format">
+              <option value="mp3" selected>MP3</option>
+              <option value="wav">WAV</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="sliders">
+          <div class="slider-group">
+            <label for="mf-rate">Velocità: <span id="mf-rate-val">1×</span></label>
+            <input type="range" id="mf-rate" min="0.25" max="4" step="0.05" value="1" />
+          </div>
+          <div class="slider-group">
+            <label for="mf-pitch">Tono: <span id="mf-pitch-val">0</span></label>
+            <input type="range" id="mf-pitch" min="-10" max="10" step="0.5" value="0" />
+          </div>
+        </div>
+
+        <div id="mf-workflow" class="workflow" role="status"></div>
+
+        <div id="mf-preview-wrap" hidden>
+          <audio id="mf-preview-player" controls></audio>
+          <div class="speed-row" data-for="mf-preview-player"></div>
+        </div>
+
+        <div class="actions">
+          <button type="button" id="mf-preview-btn">🎧 Prova (inizio)</button>
+          <button type="button" id="mf-start">📚 Avvia Multi-file</button>
+        </div>
+
+        <div id="mf-progress" class="mf-log"></div>
+        <div class="actions">
+          <button type="button" id="mf-go-history" class="btn ghost" hidden>📁 Vai alla cronologia</button>
+        </div>
       </div>
     </section>
 
-    <section id="history-section">
-      <div class="history-header">
-        <h2>Cronologia</h2>
-        <select id="category-filter">
-          <option value="">Tutte le cartelle</option>
-        </select>
-      </div>
-      <ul id="history" class="history"></ul>
+    <!-- ══════════ SCHEDA CRONOLOGIA ══════════ -->
+    <section id="tab-cronologia" class="tab-view" hidden>
+      <section id="history-section">
+        <div class="history-header">
+          <h2>Cronologia</h2>
+          <select id="category-filter">
+            <option value="">Tutte le cartelle</option>
+          </select>
+        </div>
+        <ul id="history" class="history"></ul>
+      </section>
     </section>
 
     <p id="status" role="status"></p>
   </main>
 
-  <script src="voices.js?v=5"></script>
-  <script src="auth-ui.js?v=5"></script>
-  <script src="app.js?v=5"></script>
+  <script src="voices.js?v=7"></script>
+  <script src="auth-ui.js?v=7"></script>
+  <script src="app.js?v=7"></script>
 </body>
 </html>
